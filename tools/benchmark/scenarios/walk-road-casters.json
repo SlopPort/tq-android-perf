@@ -1,0 +1,16 @@
+{
+  "scenario": "walk",
+  "route": "road",
+  "durationSec": 40,
+  "warmupSec": 8,
+  "timeOfDay": 12,
+  "god": true,
+  "_comment": "Walk the road loop while 10 level-36..40 casters chase and cast particle-heavy spells (fire/ghost/water/bone) plus 2 melee. Heaviest realistic case: AI, pathing, attack slots, projectiles and emitters together. Always use --fresh (spawns persist).",
+  "spawn": [
+    { "record": "records/creature/monster/dragonian/as_wyrmmage_40.dbr", "count": 3 },
+    { "record": "records/creature/monster/ghost/as_ghostcaster_36.dbr", "count": 3 },
+    { "record": "records/creature/monster/ichthian/bs_shaman_39.dbr", "count": 2 },
+    { "record": "records/creature/monster/ichthian/bs_bonecaster_39.dbr", "count": 2 },
+    { "record": "records/creature/monster/dragonian/am_lancer_36.dbr", "count": 2 }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "scenario": "idle",
+  "durationSec": 30,
+  "warmupSec": 10,
+  "god": true
+}

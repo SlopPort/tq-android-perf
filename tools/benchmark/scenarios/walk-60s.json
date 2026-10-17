@@ -1,0 +1,7 @@
+{
+  "scenario": "walk",
+  "durationSec": 60,
+  "warmupSec": 10,
+  "god": true,
+  "renderOnlyPlayer": false
+}

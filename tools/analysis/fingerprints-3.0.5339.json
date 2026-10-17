@@ -1,0 +1,89 @@
+{
+ "slot": [
+  {
+   "sym": "_ZN4GAME11SlotManager22CalculateSlotPositionsEf",
+   "len": 204,
+   "hash": "c25dc5a2"
+  },
+  {
+   "sym": "_ZNK4GAME9Character15GetPathPositionEv",
+   "len": 8,
+   "hash": "c4076237"
+  },
+  {
+   "sym": "_ZNK4GAME24CharacterMovementManager15GetPathPositionEv",
+   "len": 104,
+   "hash": "4f4cfd6f"
+  }
+ ],
+ "uneg": [
+  {
+   "sym": "_ZN4GAME15OpenGLESProgram18GetUniformLocationEjl",
+   "len": 80,
+   "hash": "2b7e279a"
+  },
+  {
+   "sym": "_ZN4GAME15OpenGLESProgram21resetAttributeSamplerEv",
+   "len": 72,
+   "hash": "43e6f4f2"
+  }
+ ],
+ "abbox": [
+  {
+   "sym": "_ZNK4GAME5ABBox15GetIntersectionERKNS_3RayE",
+   "len": 996,
+   "hash": "7fea5668"
+  }
+ ],
+ "getend": [
+  {
+   "sym": "_ZNK4GAME10PathRecast7Segment6GetEndEv",
+   "len": 160,
+   "hash": "5adcfaad"
+  }
+ ],
+ "snd": [
+  {
+   "sym": "_ZN4GAME12SoundManager6Play3DERKNS_15SoundDescriptorEb",
+   "len": 668,
+   "hash": "9d51de57"
+  },
+  {
+   "sym": "_ZN4GAME12SoundManager6Play2DERKNS_15SoundDescriptorEb",
+   "len": 496,
+   "hash": "f9a47c6f"
+  },
+  {
+   "sym": "_ZN4GAME12SoundManager19ProcessFinishedListEv",
+   "len": 248,
+   "hash": "e4d2ab3e"
+  },
+  {
+   "sym": "_ZN4GAME12SoundManager13StealInstanceEv",
+   "len": 156,
+   "hash": "a9e3d69c"
+  }
+ ],
+ "strm": [
+  {
+   "sym": "_ZN4GAME12SoundManager13StartStream3DERKNS_15SoundDescriptorE",
+   "len": 480,
+   "hash": "897ad4c0"
+  },
+  {
+   "sym": "_ZN4GAME12SoundManager11StartStreamERKNS_15SoundDescriptorE",
+   "len": 444,
+   "hash": "b426902c"
+  },
+  {
+   "sym": "_ZN4GAME12SoundManager19ProcessFinishedListEv",
+   "len": 248,
+   "hash": "e4d2ab3e"
+  },
+  {
+   "sym": "_ZN4GAME12SoundManager13StealInstanceEv",
+   "len": 156,
+   "hash": "a9e3d69c"
+  }
+ ]
+}

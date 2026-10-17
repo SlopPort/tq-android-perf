@@ -1,0 +1,13 @@
+{
+  "scenario": "walk",
+  "route": "road",
+  "durationSec": 40,
+  "warmupSec": 8,
+  "timeOfDay": 12,
+  "god": true,
+  "_comment": "Walk with 6 level-36 dragonian melee monsters chasing (attack slots, pathing, floor raycasts). Use --fresh.",
+  "spawn": [
+    { "record": "records/creature/monster/dragonian/am_lancer_36.dbr", "count": 3 },
+    { "record": "records/creature/monster/dragonian/am_headhunter_36.dbr", "count": 3 }
+  ]
+}

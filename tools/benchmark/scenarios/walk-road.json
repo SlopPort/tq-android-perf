@@ -1,0 +1,7 @@
+{
+  "scenario": "walk",
+  "route": "road",
+  "durationSec": 40,
+  "warmupSec": 8,
+  "timeOfDay": 12
+}

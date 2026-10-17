@@ -1,0 +1,15 @@
+{
+  "scenario": "idle",
+  "durationSec": 30,
+  "warmupSec": 10,
+  "timeOfDay": 12,
+  "god": true,
+  "_comment": "Use with --arena jingyang --fresh. 8 casters near player level 41 (many particle emitters) + player skills via taps.",
+  "spawn": [
+    { "record": "records/creature/monster/dragonian/as_wyrmmage_40.dbr", "count": 2 },
+    { "record": "records/creature/monster/ghost/as_ghostcaster_36.dbr", "count": 2 },
+    { "record": "records/creature/monster/ichthian/bs_shaman_39.dbr", "count": 2 },
+    { "record": "records/creature/monster/ichthian/bs_bonecaster_39.dbr", "count": 2 }
+  ],
+  "taps": ["2042,886@2000", "2042,679@2500", "2141,635@3000", "2147,785@700"]
+}
