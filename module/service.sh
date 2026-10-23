@@ -24,7 +24,7 @@ while [ ! -f "$MODDIR/disable" ] && [ ! -f "$MODDIR/remove" ]; do
  if [ -f "$MODDIR/handled" ] && [ "$(cat "$MODDIR/handled")" = "$key" ]; then sleep 4; continue; fi
  echo "$key" > "$MODDIR/handled"
  params='{"mode":"apply"}'
- for f in plt snd slot uneg abbox strm getend; do
+ for f in plt snd slot uneg abbox strm getend menu; do
   [ -f "$MODDIR/no$f" ] || params=$(echo "$params" | sed "s/}\$/,\"$f\":true}/")
  done
  echo "Patching PID $pid" > "$MODDIR/status.log"
