@@ -25,6 +25,10 @@ These are controlled benchmark results from one phone, not a promise for every d
 - **The graphics had already been reduced** before testing (details below). The engine patches improve performance on top of those settings.
 - **The phone was rooted**, with thermal throttling disabled and the CPU and GPU governors set to performance.
 
+[![Before and after: the same fight, top without engine patches, bottom with all seven](docs/before-after.jpg)](https://github.com/SlopPort/tq-android-perf/releases/download/v2.1.1/tq-before-after.mp4)
+
+*30-second video of the same fight (10 casters + Plague, FPS cap removed). Top: no engine patches, 21.2 FPS on average and 275 frames over 50 ms. Bottom: all seven patches, 31.9 FPS and 18 frames over 50 ms. Screen recording costs some performance, so both clips run a little slower than the benchmark table.*
+
 **[Download v2.1.1 from GitHub Releases](https://github.com/SlopPort/tq-android-perf/releases/latest)**
 
 ## Quick start
