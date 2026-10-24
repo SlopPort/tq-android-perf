@@ -1,17 +1,106 @@
-# Making Titan Quest run better on a budget Android phone, without lowering the graphics any further
+# Titan Quest Android Performance Patches
 
-**TL;DR:** On a Redmi Note 8 (Snapdragon 665, Adreno 610), Titan Quest for Android was CPU-bound and stuttered in big fights. The graphics were already turned down and I didn't want to go lower, so I patched the game engine at runtime instead. Measured on the same phone and settings, walking without monsters went from **42.5 to 53.3 FPS** and a heavy fight from **25.4 to 35.2 FPS** (frame rate cap removed for measurement). Every change was A/B tested on fresh game processes, and anything that didn't measurably help was thrown away. The patches ship as a Magisk module that injects once when the game starts. Since version 2.0 it finds everything at runtime instead of using fixed addresses, and it checks each patch before applying it, so it can work on other game versions. Version 2.1 adds an in-game menu to switch every patch and several hidden graphics options (including real shadows) on and off.
+**Real engine optimizations for Titan Quest on Android. Not just lower graphics settings.**
 
-> Most of the work (reverse engineering, writing patches, running the phone over adb, A/B testing) was done by Claude (Anthropic's AI, via Claude Code) at my direction. I made the decisions and checked the game myself (sound, visuals, no crashes).
+*Because apparently, the game engine needed a little encouragement.*
+
+An unofficial, open-source Magisk module that speeds up Titan Quest by patching CPU bottlenecks in the running ARM64 game engine. No game files are modified or distributed.
+
+![The in-game Perf menu: engine patches on the left, graphics options on the right, current FPS in the title](docs/perf-menu.jpg)
+
+## Performance results
+
+Tested on a Redmi Note 8 (Snapdragon 665, Adreno 610):
+
+| Scenario | Before | After | Improvement |
+|---|---|---|---|
+| Walking | 42.5 FPS | 53.3 FPS | **+25%** |
+| Heavy combat (10 casters + Plague) | 25.4 FPS | 35.2 FPS | **+39%** |
+| Combat p95 frame time | 52.7 ms | 34.6 ms | **−34%** |
+| Frames over 50 ms in combat | 93 | 6 | **−94%** |
+
+These are controlled benchmark results from one phone, not a promise for every device:
+
+- **The game's 30 FPS cap was removed for measurement.** In normal play the benefit shows up as smoother combat and fewer stutters, not as 50+ FPS.
+- **The graphics had already been reduced** before testing (details below). The engine patches improve performance on top of those settings.
+- **The phone was rooted**, with thermal throttling disabled and the CPU and GPU governors set to performance.
+
+**[Download v2.1.1 from GitHub Releases](https://github.com/SlopPort/tq-android-perf/releases/latest)**
+
+## Quick start
+
+**Requirements:**
+
+- A rooted **arm64** Android device with Magisk
+- Your own installed copy of Titan Quest for Android (`com.hg.titanquestultimate`)
+- A backup of your game saves
+
+**Installation:**
+
+1. Download `tq-android-perf-2.1.1.zip` from the Releases page.
+2. In Magisk, open **Modules → Install from storage**.
+3. Select the downloaded zip and reboot.
+4. Start Titan Quest and wait a few seconds after the main menu appears.
+5. Tap the **Perf** button next to the pause button to open the performance and graphics options.
+
+On the first launch of a game version, a background scan adds about 4 seconds. Later launches use the cached result.
+
+**Switches without the menu:** create an empty file in `/data/adb/modules/tq_autopatch/` and restart the game. `noplt`, `nosnd`, `nostrm`, `noslot`, `nouneg`, `noabbox` and `nogetend` turn off one patch each; `nomenu` hides the menu. The module's **Action** button in Magisk pauses or resumes everything.
+
+**Uninstall:** remove the module in Magisk and reboot.
+
+This is an experimental fan-made modification for single-player use. Use it at your own risk.
+
+## Compatibility
+
+| | |
+|---|---|
+| **Tested** | Titan Quest for Android **3.0.5339** (versionCode 30005339), arm64, on a Redmi Note 8 with LineageOS and Magisk |
+| **Expected to work, untested** | Other arm64 builds of the game. Functions are found by name at runtime and every patch checks a fingerprint of the code it changes. The call rewrite should apply on any build; a patch whose code changed switches itself off and says why in the status file. |
+| **Not supported** | The 32-bit (armeabi-v7a) build, the PC version, and phones without root |
+
+To see what applied on your phone, run:
+
+```bash
+adb shell su -c cat /data/user/0/com.hg.titanquestultimate/cache/tq-v2-status.json
+```
+
+## What does it optimize?
+
+The module contains seven engine patches:
+
+- **Direct calls:** removes unnecessary PLT trampolines from calls between the engine's own functions.
+- **Sound sample cache:** stops decoding the same sound effect again on every play.
+- **Short effects as samples:** short sounds that the game streamed from file every time are loaded once and reused.
+- **Attack slot cache:** skips redundant floor raycasts when monsters pick positions around a target that hasn't moved.
+- **Shader uniform cache:** remembers shader uniforms that don't exist, instead of asking the GPU driver every frame.
+- **Faster ray-box test:** a hand-written ARM64 version of the engine's hottest geometry function, with bit-identical results.
+- **Path end-point cache:** avoids repeated floor queries for unchanged monster path end points.
+
+Each patch can be switched on or off separately, and each one checks the game's code before touching it, so an incompatible patch is skipped instead of applied blindly.
+
+## In-game performance menu
+
+Version 2.1 adds a menu drawn over the game:
+
+- a switch for every engine patch;
+- the current FPS in the panel title;
+- graphics options the mobile settings don't offer: shadows, grass, water, fog, decals, particles, see-through objects, terrain and lighting detail, full-resolution textures;
+- settings that are kept between launches.
+
+Two patches (direct calls and the ray-box test) change machine code at startup, so switching them takes effect on the next launch.
+
+## Development disclosure
+
+Most of the work (reverse engineering, writing patches, running the phone over adb, A/B testing) was done by Claude (Anthropic's AI, via Claude Code) at my direction. I made the decisions and checked the game myself (sound, visuals, no crashes).
 
 ---
 
-## Results
+# Technical documentation
 
-Two things to know before reading the numbers:
+For developers, modders and reverse engineers: how the benchmarks were run, what each patch does and why, how the patches are applied, what didn't work, and the Frida pitfalls met along the way.
 
-- **The graphics on this phone were already reduced** (details under "Test setup" below). With stock graphics the absolute FPS will be lower.
-- **The FPS cap was removed for measurement.** In normal play the game is capped at 30 FPS, so on this phone the gains show up as fewer stutters and a steadier 30 FPS in fights, not as 50 FPS.
+## Detailed results
 
 "Before" is the game with only the graphics settings. "After" is the same game with all engine patches. Both were measured in the same session, 3 interleaved runs each, every run on a freshly started game:
 
@@ -154,7 +243,7 @@ These cost the most time, so here they are if you try something similar:
 8. **Ghidra shows PLT stub addresses for some internal calls.** Resolve the real function through the dynamic symbol table.
 9. **`Module.enumerateImports()` crashed the game** for a library mapped straight from the APK, inside Frida's ELF parser. Reading the relocations from the mapped dynamic section yourself is simple and safe.
 10. **Long loops are slow in Frida's JavaScript engine.** Scanning 2.4 million instructions took 44 s in JavaScript and 0.3 s in a CModule.
-11. **A near allocation for every hooked function can fail at random.** Allocate one pool of stub pages near the middle of the library once, and take pages from it.
+11. **Allocations "near" a library can fail when the address space around it is packed.** One layout had 6,025 mappings and the largest free gap within branch range was 13 pages. Ask for small chunks (single pages work), and fall back to free gaps read from `/proc/self/maps`. Read that file in a loop: procfs reports its size as 0, so Frida's `File.readAllText` returns nothing.
 12. **A second injection into a running game still gets it killed** by the anti-tamper library. Diagnostics have to come from the one injected script, for example through a status file.
 
 ---
@@ -196,7 +285,7 @@ This was tested by simulating an unknown build, with one fingerprint corrupted o
 
 The file is at `/data/user/0/com.hg.titanquestultimate/cache/tq-v2-status.json`. If you run another game version and a patch says `skipped`, the fingerprints in that file are what's needed to check the changed function and add your build to the list of known ones.
 
-## In-game options menu (module 2.1)
+## How the in-game menu works (module 2.1)
 
 A small **Perf** button sits at the top of the screen, to the right of the pause button. Tapping it opens a panel over the game:
 
@@ -224,55 +313,18 @@ How it works:
 - **Touch.** The game doesn't read touch from events. It polls finger positions every frame (`SDL_GetNumTouchFingers` / `SDL_GetTouchFinger`) for each of three touch devices. The menu hooks those two imports and hides any finger that starts on the button, or anywhere while the panel is open. The game never sees taps meant for the menu.
 - **Turning shadows on** sets the game's own shadows option. While they're on, the game may save that option to its settings file.
 
-## Want to try it?
-
-**Download:** [github.com/SlopPort/tq-android-perf](https://github.com/SlopPort/tq-android-perf) (the installable zip is on the [Releases page](https://github.com/SlopPort/tq-android-perf/releases/tag/v2.1)).
-
-**Requirements:** a rooted **arm64** phone with Magisk, and your own installed copy of Titan Quest for Android (`com.hg.titanquestultimate`). The module ships `frida-inject` for arm64. It's meant for single-player; the benchmark tools (god mode, monster spawning) are test tools for single-player only.
-
-**What to expect on versions other than 3.0.5339:**
-- The call rewrite (patch 1, the biggest gain) should work on any arm64 build.
-- The other patches apply where their fingerprints match.
-
-**Limits:**
-- The 32-bit (armeabi-v7a) build would need a separate port.
-- The PC version is a different binary entirely.
-
-**Before installing:** back up your saves. This is unofficial and experimental, so use it at your own risk.
-
-**Not included and not to be shared:** the game's own files. Everything here patches your own installed copy in memory.
-
-### Install
-
-1. Download `tq-android-perf-2.1.zip` from this repository's **Releases** page (or build it: `python module/build.py`).
-2. In the Magisk app: **Modules → Install from storage**, pick the zip, then reboot.
-3. Start Titan Quest. The patches apply a few seconds after the main menu appears. On the first launch of a game version
-   the call-rewrite scan adds about 4 seconds in the background; later launches use the cached result.
-4. Check what applied:
-
-   ```bash
-   adb shell su -c cat /data/user/0/com.hg.titanquestultimate/cache/tq-v2-status.json
-   ```
-
-5. Switches: create an empty file in `/data/adb/modules/tq_autopatch/` and restart the game.
-   - `noplt`, `nosnd`, `nostrm`, `noslot`, `nouneg`, `noabbox`, `nogetend` turn off one patch each.
-   - `nomenu` hides the in-game options menu.
-   - The module's **Action** button in Magisk pauses or resumes all patches.
-
-To uninstall, remove the module in Magisk and reboot.
-
-### Credits
-
-- [Frida](https://frida.re/) for the instrumentation toolkit.
-- THQ Nordic / HandyGames for Titan Quest. This is an unofficial, non-commercial fan project, not affiliated with or endorsed by them. It contains no game files, code or assets.
-
 ## Repository layout
 
 | Path | What it is |
 |---|---|
-| `module/` | Magisk module source (v2.1; `patch.js` is the whole patch script, unminified) and `build.py` that produces the installable zip |
+| `module/` | Magisk module source (v2.1.1; `patch.js` is the whole patch script, unminified) and `build.py` that produces the installable zip |
 | `module/src/` | Sources of the in-game menu: `overlay.c` (drawing and touch, a Frida CModule), `overlay-glue.js`, `make_font.py` |
 | `tools/benchmark/` | The benchmark harness: `tqbench.py`, the Frida agent, A/B scripts, scenarios and routes |
 | `tools/analysis/` | Fingerprints, the offline PLT scan, the ray-box emulator test, assembly stub generators |
+
+## Credits
+
+- [Frida](https://frida.re/) for the instrumentation toolkit.
+- THQ Nordic / HandyGames for Titan Quest. This is an unofficial, non-commercial fan project, not affiliated with or endorsed by them. It contains no game files, code or assets.
 
 License: MIT (see `LICENSE`). Third-party notices: `THIRD-PARTY.md`.

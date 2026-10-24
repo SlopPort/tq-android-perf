@@ -1,6 +1,6 @@
 id=tq_autopatch
 name=TQ Android Perf (unofficial)
-version=2.1
-versionCode=21
+version=2.1.1
+versionCode=22
 author=tq-android-perf contributors
 description=Runtime engine patches for Titan Quest (Android, arm64): direct calls instead of PLT, sound and short-effect caches, attack-slot, shader-uniform, ray-box and path-end-point fixes. Includes an in-game options menu (Perf button) to toggle every patch and hidden graphics flags. Each patch checks function fingerprints and switches itself off on unknown builds. Status: /data/user/0/com.hg.titanquestultimate/cache/tq-v2-status.json

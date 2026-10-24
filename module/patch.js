@@ -778,20 +778,61 @@ async function v2WaitEngine() {
 
 // Stub pages for `b` redirects (+-128 MB). One pool, allocated once near the middle of libtq's executable
 // segment, so every function in libtq is in range of every page.
+function v2MmapNear(mid, reach, size) {
+  const mmap = new NativeFunction(Process.getModuleByName('libc.so').getExportByName('mmap'), 'pointer', ['pointer', 'size_t', 'int', 'int', 'int', 'long']);
+  const munmap = new NativeFunction(Process.getModuleByName('libc.so').getExportByName('munmap'), 'int', ['pointer', 'size_t']);
+  const m = Number(mid.toString()), lo = m - reach, hi = m + reach, ranges = [];
+  // procfs reports size 0, so read until EOF instead of File.readAllText
+  const f = new File('/proc/self/maps', 'r');
+  let text = '', chunk;
+  while ((chunk = f.readText(65536)) !== '') text += chunk;
+  f.close();
+  for (const line of text.split(String.fromCharCode(10))) {
+    const r = /^([0-9a-f]+)-([0-9a-f]+)/.exec(line);
+    if (r) ranges.push([parseInt(r[1], 16), parseInt(r[2], 16)]);
+  }
+  ranges.sort((x, y) => x[0] - y[0]);
+  const gaps = [];
+  let prev = 0;
+  for (const [a, b] of ranges) { if (a > prev) gaps.push([prev, a]); prev = Math.max(prev, b); }
+  // closest gaps first; keep one guard page on each side
+  const cands = [];
+  for (const [a, b] of gaps) {
+    const s0 = Math.max(a, lo), e0 = Math.min(b, hi);
+    if (e0 - s0 < size) continue;
+    const at = m < s0 ? s0 : (m + size > e0 ? e0 - size : m);
+    cands.push(Math.floor(at / 0x1000) * 0x1000);
+  }
+  cands.sort((x, y) => Math.abs(x - m) - Math.abs(y - m));
+  for (const at of cands) {
+    const want = ptr('0x' + at.toString(16));
+    const got = mmap(want, size, 3, 0x22, -1, 0);          // PROT_READ|WRITE, MAP_PRIVATE|MAP_ANONYMOUS; address as a hint
+    if (got.equals(want)) return got;
+    if (!got.equals(ptr('-1'))) munmap(got, size);
+  }
+  let big = 0; for (const [a, b] of gaps) { const s0 = Math.max(a, lo), e0 = Math.min(b, hi); if (e0 > s0) big = Math.max(big, e0 - s0); }
+  throw Error('no free gap within branch range (' + cands.length + ' candidates, ' + ranges.length + ' maps, ' + text.length + ' chars, largest gap in window ' + big + ', window ' + lo.toString(16) + '-' + hi.toString(16) + ')');
+}
 function v2NearPage(t) {
-  if (!V2.pool) {
+  // Stub pages must be within +-128 MB of every libtq function they jump to or from. The address space near
+  // libtq can be packed (one failing layout had 6025 mappings and a largest free gap of 13 pages), so pages
+  // come in small chunks: 8 pages, else 1 page, via Frida's near allocator, else a free gap from /proc/self/maps.
+  if (!V2.pool || V2.pool.next >= V2.pool.pages) {
     const ex = v2Elf(V2.mod.base).find(x => x.type === 1 && (x.flags & 1));
     const mid = V2.mod.base.add(ex.vaddr + Math.floor(ex.filesz / 2)), span = Math.ceil(ex.filesz / 2) + 0x100000;
-    const pages = 32, size = pages * Process.pageSize;
-    let mem = null, lastErr = null;
-    for (const d of [0, -0x2000000, 0x2000000, -0x4000000, 0x4000000]) {
-      try { mem = Memory.alloc(size, { near: d < 0 ? mid.sub(-d) : mid.add(d), maxDistance: 0x7ff0000 - span - Math.abs(d) }); break; } catch (e) { lastErr = e; }
+    let mem = null, pages = 0, via = '', lastErr = null;
+    for (const n of [8, 1]) {
+      const size = n * Process.pageSize;
+      try { mem = Memory.alloc(size, { near: mid, maxDistance: 0x7ff0000 - span }); via = 'frida'; }
+      catch (e) { lastErr = e; try { mem = v2MmapNear(mid, 0x7f00000 - span, size); via = 'maps'; } catch (e2) { lastErr = e2; } }
+      if (mem) { pages = n; break; }
     }
     if (!mem) throw Error('no stub pages near libtq: ' + lastErr);
     held.push(mem);
     V2.pool = { mem, next: 0, pages };
+    V2.status.stubpages = (V2.status.stubpages || []).concat([via + ':' + pages + '@' + mem]);
+    v2Save();
   }
-  if (V2.pool.next >= V2.pool.pages) throw Error('stub pool exhausted');
   const page = V2.pool.mem.add(V2.pool.next++ * Process.pageSize);
   const delta = page.compare(t) >= 0 ? page.sub(t) : t.sub(page);
   if (delta.compare(ptr(0x8000000 - Process.pageSize)) >= 0) throw Error('stub page out of branch range');
