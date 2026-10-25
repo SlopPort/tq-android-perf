@@ -59,6 +59,11 @@ extern void ** gengine;            /* &GAME::gEngine */
 extern guint8 * atlas;             /* alpha, aw x ah */
 extern float * glyphs;             /* 95 x 7: x, y, w, h, xoff, yoff, adv */
 extern gint32 * fontinfo;          /* aw, ah, size, ascent, whitex, whitey */
+/* add-ons (overlay-glue.js): up to 4, each { frame, draw, touch } (see the add-on section below) */
+extern void * addon_tab[12];
+extern gint32 addon_n;
+extern gint32 core_cfg[4];         /* [0] show the perf rows (0 in a build without engine patches) */
+extern char core_label[16];        /* text of the menu button */
 
 #define NITEMS 17
 #define NPATCH 7
@@ -73,7 +78,7 @@ typedef struct {
   gint32 init[32];                        /* 240: graphics values captured at the first frame */
   gint32 dbg[16];                         /* 368: num calls, fingers, last x*1000, last y*1000, W, H, presses, mouse calls,
                                              draw calls, faces, emitters, lights */
-  guint8 gstats[64];
+  guint8 gstats[64];                      /* 432 */
   /* private */
   gint32 W, H, glok, prog, vbo, vao, tex, u_sc, u_tx, nv, capt, texchk;
   gint64 own[16]; gint64 own_dev[16]; gint32 nown;
@@ -81,6 +86,7 @@ typedef struct {
   Finger * kept[16]; gint32 nkept;
   gint32 seen_own[16], seen_game[16];
   float press_x, press_y;
+  gint32 hide;                            /* an add-on hides the menu button this frame */
   Vtx v[MAXV];
 } St;
 extern St st;
@@ -191,16 +197,52 @@ static R row_rect (gint32 i)
 }
 static gint32 inside (R r, float x, float y) { return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h; }
 
+/* ---------- add-ons ----------
+   addon_tab[3k..3k+2] = frame, draw, touch of add-on k (C functions of the add-on's own CModule):
+     gint32 frame (void)                                   game thread, every frame; nonzero hides the menu button
+     void draw (gint32 panel, float x, float y, float w)   panel = 1: its section of the open panel at (x, y), width w;
+                                                           panel = 0: anything it shows over the game
+     gint32 touch (float x, float y, gint32 panel, gint32 press)
+                                                           press = 0: claim this finger?  press = 1: handle the press;
+                                                           returns 2 to close the panel
+   They draw with ui_box / ui_text / ui_text_w and read sizes with ui_metrics. */
+typedef gint32 (*A_frame) (void);
+typedef void (*A_draw) (gint32, float, float, float);
+typedef gint32 (*A_touch) (float, float, gint32, gint32);
+static R addon_area (void)
+{
+  R p = panel_rect (), r; float s = S ();
+  if (core_cfg[0]) { R last = row_rect (NPATCH - 1); r.x = last.x; r.y = last.y + last.h + 80 * s; r.w = last.w; }
+  else { r.x = p.x + 20 * s; r.y = p.y + 140 * s; r.w = (p.w - 60 * s) / 2; }
+  r.h = 0; return r;
+}
+static gint32 addons_touch (float px, float py, gint32 press)
+{
+  gint32 k, r;
+  for (k = 0; k < addon_n && k < 4; k++) if ((r = ((A_touch) addon_tab[3 * k + 2]) (px, py, st.open, press)) != 0) return r;
+  return 0;
+}
+
 /* ---------- touch ---------- */
-static gint32 claims (float px, float py) { if (st.open) return 1; return inside (btn_rect (), px, py); }
+static gint32 claims (float px, float py)
+{
+  if (st.open) return 1;
+  if (addons_touch (px, py, 0)) return 1;
+  return !st.hide && inside (btn_rect (), px, py);
+}
 static void on_press (float px, float py)
 {
   gint32 i;
   st.dbg[6]++;
-  if (!st.open) { if (inside (btn_rect (), px, py)) st.open = 1; return; }
+  if (!st.open) {
+    if (addons_touch (px, py, 1)) return;
+    if (!st.hide && inside (btn_rect (), px, py)) st.open = 1;
+    return;
+  }
   if (!inside (panel_rect (), px, py) || inside (close_rect (), px, py)) { st.open = 0; return; }
-  if (inside (reset_rect (), px, py)) { reset_gfx (); return; }
-  for (i = 0; i < NITEMS; i++) if (inside (row_rect (i), px, py)) { toggle (i); return; }
+  if (core_cfg[0] && inside (reset_rect (), px, py)) { reset_gfx (); return; }
+  if (core_cfg[0]) for (i = 0; i < NITEMS; i++) if (inside (row_rect (i), px, py)) { toggle (i); return; }
+  if (addons_touch (px, py, 1) == 2) st.open = 0;
 }
 gint32 h_num (gint64 touch)
 {
@@ -273,6 +315,15 @@ static void text (float x, float y, const char * s, float scale, guint32 col)
     x += g[6] * scale;
   }
 }
+void ui_box (float x, float y, float w, float h, guint32 c) { R r; r.x = x; r.y = y; r.w = w; r.h = h; box (r, c); }
+void ui_text (float x, float y, const char * str, float scale, guint32 c) { text (x, y, str, scale, c); }
+float ui_text_w (const char * str, float scale) { return text_w (str, scale); }
+void ui_metrics (float * m) { m[0] = (float) st.W; m[1] = (float) st.H; m[2] = S (); m[3] = (float) fontinfo[2]; m[4] = (float) st.frames; }
+static void addons_draw (void)
+{
+  gint32 k; R a = addon_area ();
+  for (k = 0; k < addon_n && k < 4; k++) ((A_draw) addon_tab[3 * k + 1]) (st.open, a.x, a.y, a.w);
+}
 static void build (void)
 {
   float s = S (), fs = s * 0.78f, ts;
@@ -280,38 +331,47 @@ static void build (void)
   guint32 white = rgba (240, 236, 226, 255), dim = rgba (160, 158, 150, 255), gold = rgba (214, 170, 92, 255);
   R b = btn_rect ();
   st.nv = 0;
-  box (b, rgba (16, 18, 18, st.open ? 235 : 150));
-  ts = fs * 0.95f;
-  text (b.x + (b.w - text_w ("Perf", ts)) / 2, b.y + (b.h - fontinfo[2] * ts) / 2 + 2 * s, "Perf", ts, st.open ? gold : white);
-  if (!st.open) return;
+  if (!st.open) {
+    if (!st.hide) {
+      box (b, rgba (16, 18, 18, 150));
+      ts = fs * 0.95f;
+      text (b.x + (b.w - text_w (core_label, ts)) / 2, b.y + (b.h - fontinfo[2] * ts) / 2 + 2 * s, core_label, ts, white);
+    }
+    addons_draw ();
+    return;
+  }
   {
     R p = panel_rect (), c = close_rect (), rs = reset_rect (), h;
     box (p, rgba (12, 14, 14, 228));
-    text (p.x + 24 * s, p.y + 22 * s, "TQ Android Perf", s * 1.05f, gold);
+    const char * title = core_cfg[0] ? "TQ Android Perf" : "TQ Android mods";
+    text (p.x + 24 * s, p.y + 22 * s, title, s * 1.05f, gold);
     {
       char buf[16]; gint32 f = st.dbg[12], n = 0, d = 100;
       if (f < 0) f = 0; if (f > 999) f = 999;
       for (; d > 0; d /= 10) if (f >= d || n > 0 || d == 1) buf[n++] = (char) ('0' + (f / d) % 10);
       buf[n++] = ' '; buf[n++] = 'F'; buf[n++] = 'P'; buf[n++] = 'S'; buf[n] = 0;
-      text (p.x + 24 * s + text_w ("TQ Android Perf", s * 1.05f) + 30 * s, p.y + 30 * s, buf, fs, dim);
+      text (p.x + 24 * s + text_w (title, s * 1.05f) + 30 * s, p.y + 30 * s, buf, fs, dim);
     }
     box (c, rgba (60, 60, 56, 255));
     text (c.x + (c.w - text_w ("Close", fs)) / 2, c.y + 10 * s, "Close", fs, white);
-    h = row_rect (0); text (h.x, h.y - 52 * s, "Engine patches", fs, gold);
-    h = row_rect (NPATCH); text (h.x, h.y - 52 * s, "Graphics (applies live)", fs, gold);
-    for (i = 0; i < NITEMS; i++) {
-      R r = row_rect (i), pill; gint32 on = item_value (i), na = items[i].kind == 3 && st.inst[items[i].off] < 0;
-      box (r, rgba (255, 255, 255, 14));
-      text (r.x + 14 * s, r.y + 8 * s, items[i].label, fs * 0.92f, na ? dim : white);
-      pill.w = 104 * s; pill.h = r.h - 10 * s; pill.x = r.x + r.w - pill.w - 8 * s; pill.y = r.y + 5 * s;
-      if (na) { box (pill, rgba (50, 50, 50, 255)); text (pill.x + (pill.w - text_w ("N/A", fs * 0.8f)) / 2, pill.y + 6 * s, "N/A", fs * 0.8f, dim); continue; }
-      box (pill, on ? rgba (47, 120, 104, 255) : rgba (70, 70, 66, 255));
-      text (pill.x + (pill.w - text_w (on ? "ON" : "OFF", fs * 0.8f)) / 2, pill.y + 6 * s, on ? "ON" : "OFF", fs * 0.8f, white);
-      if (item_restart (i)) text (pill.x - text_w ("restart", fs * 0.7f) - 12 * s, pill.y + 8 * s, "restart", fs * 0.7f, gold);
+    if (core_cfg[0]) {
+      h = row_rect (0); text (h.x, h.y - 52 * s, "Engine patches", fs, gold);
+      h = row_rect (NPATCH); text (h.x, h.y - 52 * s, "Graphics (applies live)", fs, gold);
+      for (i = 0; i < NITEMS; i++) {
+        R r = row_rect (i), pill; gint32 on = item_value (i), na = items[i].kind == 3 && st.inst[items[i].off] < 0;
+        box (r, rgba (255, 255, 255, 14));
+        text (r.x + 14 * s, r.y + 8 * s, items[i].label, fs * 0.92f, na ? dim : white);
+        pill.w = 104 * s; pill.h = r.h - 10 * s; pill.x = r.x + r.w - pill.w - 8 * s; pill.y = r.y + 5 * s;
+        if (na) { box (pill, rgba (50, 50, 50, 255)); text (pill.x + (pill.w - text_w ("N/A", fs * 0.8f)) / 2, pill.y + 6 * s, "N/A", fs * 0.8f, dim); continue; }
+        box (pill, on ? rgba (47, 120, 104, 255) : rgba (70, 70, 66, 255));
+        text (pill.x + (pill.w - text_w (on ? "ON" : "OFF", fs * 0.8f)) / 2, pill.y + 6 * s, on ? "ON" : "OFF", fs * 0.8f, white);
+        if (item_restart (i)) text (pill.x - text_w ("restart", fs * 0.7f) - 12 * s, pill.y + 8 * s, "restart", fs * 0.7f, gold);
+      }
+      box (rs, rgba (60, 60, 56, 255));
+      text (rs.x + (rs.w - text_w ("Reset graphics", fs)) / 2, rs.y + 10 * s, "Reset graphics", fs, white);
+      text (p.x + 24 * s, p.y + p.h - 50 * s, "'restart' = applies on the next game launch. Tap outside to close.", fs * 0.72f, dim);
     }
-    box (rs, rgba (60, 60, 56, 255));
-    text (rs.x + (rs.w - text_w ("Reset graphics", fs)) / 2, rs.y + 10 * s, "Reset graphics", fs, white);
-    text (p.x + 24 * s, p.y + p.h - 50 * s, "'restart' = applies on the next game launch. Tap outside to close.", fs * 0.72f, dim);
+    addons_draw ();
   }
 }
 
@@ -410,7 +470,12 @@ static void draw (void * dpy, void * surf)
 gint32 h_swap (void * dpy, void * surf)
 {
   st.frames++;
-  apply_gfx ();
+  if (core_cfg[0]) apply_gfx ();
+  {
+    gint32 k, hide = 0;
+    for (k = 0; k < addon_n && k < 4; k++) if (((A_frame) addon_tab[3 * k]) ()) hide = 1;
+    st.hide = hide;
+  }
   if (st.frames % 15 == 0) {
     guint8 * g = ge ();
     if (g != NULL) {

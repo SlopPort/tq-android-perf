@@ -29,7 +29,7 @@ These are controlled benchmark results from one phone, not a promise for every d
 
 *30-second video of the same fight (10 casters + Plague, FPS cap removed). Top: no engine patches, 21.2 FPS on average and 275 frames over 50 ms. Bottom: all seven patches, 31.9 FPS and 18 frames over 50 ms. Screen recording costs some performance, so both clips run a little slower than the benchmark table.*
 
-**[Download v2.1.1 from GitHub Releases](https://github.com/SlopPort/tq-android-perf/releases/latest)**
+**[Download v2.3 from GitHub Releases](https://github.com/SlopPort/tq-android-perf/releases/latest)**
 
 ## Quick start
 
@@ -41,7 +41,7 @@ These are controlled benchmark results from one phone, not a promise for every d
 
 **Installation:**
 
-1. Download `tq-android-perf-2.1.1.zip` from the Releases page.
+1. Download `tq-android-perf-2.3.zip` from the Releases page.
 2. In Magisk, open **Modules → Install from storage**.
 3. Select the downloaded zip and reboot.
 4. Start Titan Quest and wait a few seconds after the main menu appears.
@@ -52,6 +52,8 @@ On the first launch of a game version, a background scan adds about 4 seconds. L
 **Switches without the menu:** create an empty file in `/data/adb/modules/tq_autopatch/` and restart the game. `noplt`, `nosnd`, `nostrm`, `noslot`, `nouneg`, `noabbox` and `nogetend` turn off one patch each; `nomenu` hides the menu. The module's **Action** button in Magisk pauses or resumes everything.
 
 **Uninstall:** remove the module in Magisk and reboot.
+
+**Add-ons:** [tq-traders](https://github.com/SlopPort/tq-traders) adds traders and a respec to the Perf menu. Install it as a second Magisk module; both still run in a single injection.
 
 This is an experimental fan-made modification for single-player use. Use it at your own risk.
 
@@ -93,6 +95,17 @@ Version 2.1 adds a menu drawn over the game:
 - settings that are kept between launches.
 
 Two patches (direct calls and the ray-box test) change machine code at startup, so switching them takes effect on the next launch.
+
+## Add-ons
+
+Since 2.3 the in-game menu can host add-ons from other Magisk modules. The first one is [tq-traders](https://github.com/SlopPort/tq-traders): summonable traders (green, blue and purple items), a Restock button for every merchant, and skill and attribute resets, for single-player use.
+
+- **Install** the add-on's module as usual in Magisk. Its options then appear in the **Perf** menu, below the engine patches.
+- **One injection.** The game's anti-tamper library kills the process after a second Frida injection. So this module's service appends the `tq-addon.js` file of every other installed and enabled module to its own script, and injects everything once. The add-on module's own service stays idle.
+- **For add-on authors.** The menu core exposes a small C interface. An add-on pushes itself into `OVERLAY_ADDONS` and returns three C functions from its own CModule: `frame()` (game thread, every frame), `draw(panel, x, y, w)` (its section of the open panel, or anything it shows over the game) and `touch(x, y, panel, press)` (claim or handle a finger, or close the panel). It draws with `ui_box`, `ui_text` and `ui_text_w`, and reads screen sizes with `ui_metrics`. Up to 4 add-ons are supported. See the add-on section in `overlay.c`.
+- **Status.** Each add-on gets an entry under `addons` in the status file, with `active` or the error that stopped it.
+
+Version 2.2 had a built-in blue trader. It was only used on the developers' phone and never published. In 2.3 it moved to tq-traders.
 
 ## Development disclosure
 
@@ -321,7 +334,7 @@ How it works:
 
 | Path | What it is |
 |---|---|
-| `module/` | Magisk module source (v2.1.1; `patch.js` is the whole patch script, unminified) and `build.py` that produces the installable zip |
+| `module/` | Magisk module source (v2.3; `patch.js` is the whole patch script, unminified) and `build.py` that produces the installable zip |
 | `module/src/` | Sources of the in-game menu: `overlay.c` (drawing and touch, a Frida CModule), `overlay-glue.js`, `make_font.py` |
 | `tools/benchmark/` | The benchmark harness: `tqbench.py`, the Frida agent, A/B scripts, scenarios and routes |
 | `tools/analysis/` | Fingerprints, the offline PLT scan, the ray-box emulator test, assembly stub generators |

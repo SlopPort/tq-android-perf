@@ -10,6 +10,9 @@ const OV_GL = ['glGetIntegerv', 'glGetBooleanv', 'glIsEnabled', 'glEnable', 'glD
   'glBindFramebuffer', 'glIsProgram', 'glBindSampler', 'glBlendFunc', 'glGetShaderiv', 'glGetProgramiv'];
 const OV_CFG = V2_CACHE + 'tq-perf-menu.json';
 V2.en = {};
+// Add-ons (e.g. tq-blue-trader's tq-addon.js, appended to this script) push { name, install(ctx) } here; install returns
+// { frame, draw, touch } (C functions, see overlay.c) and optionally a status object.
+var OVERLAY_ADDONS = [];
 
 function ovConfig() { try { return JSON.parse(File.readAllText(OV_CFG)); } catch (e) { return {}; } }
 function ovWanted(name) { const c = ovConfig(); return c[name] === undefined ? true : !!c[name]; }   // patches default on
@@ -23,7 +26,9 @@ function ovB64(s) {
   }
   return out;
 }
-function overlayInstall(b, states) {
+// opts: { perfRows: show the engine-patch and graphics rows, label: menu button text }
+function overlayInstall(b, states, opts) {
+  opts = Object.assign({ perfRows: true, label: 'Perf' }, opts || {});
   const gles = Process.findModuleByName('libGLESv3.so') || Process.getModuleByName('libGLESv2.so');
   const egl = Process.getModuleByName('libEGL.so');
   const slots = { swap: V2.imp['SwappyGL_swap'], num: V2.imp['SDL_GetNumTouchFingers'], get: V2.imp['SDL_GetTouchFinger'], mouse: V2.imp['SDL_GetMouseState'] };
@@ -50,9 +55,24 @@ function overlayInstall(b, states) {
   v.opt_getbool.writePointer(V2.exp('_ZNK4GAME7Options7GetBoolENS0_8BoolNameE'));
   v.opt_setbool.writePointer(V2.exp('_ZN4GAME7Options7SetBoolENS0_8BoolNameEb'));
   v.gengine.writePointer(V2.exp('_ZN4GAME7gEngineE'));
+  v.addon_tab = Memory.alloc(12 * 8); v.addon_n = Memory.alloc(4); v.core_cfg = Memory.alloc(16); v.core_label = Memory.alloc(16);
+  held.push(v.addon_tab, v.addon_n, v.core_cfg, v.core_label);
+  v.addon_n.writeS32(0); v.core_cfg.writeS32(opts.perfRows ? 1 : 0); v.core_label.writeUtf8String(opts.label.slice(0, 15));
   const cm = new CModule(OVERLAY_C, v); held.push(cm);
   const size = new NativeFunction(cm.st_size, 'int', [])();
   if (size > 512 * 1024) throw Error('overlay state too large: ' + size);
+  V2.status.addons = {};
+  const ctx = { ui: { box: cm.ui_box, text: cm.ui_text, text_w: cm.ui_text_w, metrics: cm.ui_metrics }, buildId: V2.status.buildId };
+  for (const a of OVERLAY_ADDONS) {
+    const n = v.addon_n.readS32();
+    if (n >= 4) break;
+    try {
+      const r = a.install(ctx);
+      [r.frame, r.draw, r.touch].forEach((f, i) => v.addon_tab.add((3 * n + i) * 8).writePointer(f));
+      v.addon_n.writeS32(n + 1);
+      V2.status.addons[a.name] = Object.assign({ state: 'active' }, r.status || {});
+    } catch (e) { V2.status.addons[a.name] = { state: 'error', error: String(e), at: String(e.stack || '').split('\n').slice(0, 3).join(' | ') }; }
+  }
   // settings: -1 = untouched (patches default on); patch rows hold the desired state
   const cfg = ovConfig();
   for (let i = 0; i < 32; i++) st.add(16 + i * 4).writeS32(-1);

@@ -27,7 +27,14 @@ while [ ! -f "$MODDIR/disable" ] && [ ! -f "$MODDIR/remove" ]; do
  for f in plt snd slot uneg abbox strm getend menu; do
   [ -f "$MODDIR/no$f" ] || params=$(echo "$params" | sed "s/}\$/,\"$f\":true}/")
  done
+ # Add-ons from other modules (tq-addon.js, e.g. tq_traders) join this one injection: a second injection would
+ # get the game killed.
+ cat "$MODDIR/patch.js" > "$MODDIR/run.js"
+ for a in /data/adb/modules/*/tq-addon.js; do
+  d=${a%/*}
+  [ -f "$a" ] && [ ! -f "$d/disable" ] && [ ! -f "$d/remove" ] && { echo; cat "$a"; } >> "$MODDIR/run.js"
+ done
  echo "Patching PID $pid" > "$MODDIR/status.log"
- "$MODDIR/injector" -p "$pid" -s "$MODDIR/patch.js" -P "$params" -e >> "$MODDIR/status.log" 2>&1
+ "$MODDIR/injector" -p "$pid" -s "$MODDIR/run.js" -P "$params" -e >> "$MODDIR/status.log" 2>&1
  sleep 4
 done
