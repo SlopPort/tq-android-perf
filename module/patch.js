@@ -1055,7 +1055,7 @@ typedef gint32 (*A_touch) (float, float, gint32, gint32);
 static R addon_area (void)
 {
   R p = panel_rect (), r; float s = S ();
-  if (core_cfg[0]) { R last = row_rect (NPATCH - 1); r.x = last.x; r.y = last.y + last.h + 80 * s; r.w = last.w; }
+  if (core_cfg[0]) { R last = row_rect (NPATCH - 1); r.x = last.x; r.y = last.y + last.h + 28 * s; r.w = last.w; }
   else { r.x = p.x + 20 * s; r.y = p.y + 140 * s; r.w = (p.w - 60 * s) / 2; }
   r.h = 0; return r;
 }
@@ -1212,7 +1212,8 @@ static void build (void)
       }
       box (rs, rgba (60, 60, 56, 255));
       text (rs.x + (rs.w - text_w ("Reset graphics", fs)) / 2, rs.y + 10 * s, "Reset graphics", fs, white);
-      text (p.x + 24 * s, p.y + p.h - 50 * s, "'restart' = applies on the next game launch. Tap outside to close.", fs * 0.72f, dim);
+      if (addon_n > 0) { R g = row_rect (NITEMS - 1); text (g.x, g.y + g.h + 16 * s, "'restart' = applies on the next game launch.", fs * 0.72f, dim); }
+      else text (p.x + 24 * s, p.y + p.h - 50 * s, "'restart' = applies on the next game launch. Tap outside to close.", fs * 0.72f, dim);
     }
     addons_draw ();
   }

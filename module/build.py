@@ -15,7 +15,7 @@ FILES = ['module.prop', 'customize.sh', 'service.sh', 'action.sh', 'patch.js', '
 
 ap = argparse.ArgumentParser()
 ap.add_argument('--injector', help='existing frida-inject binary for android-arm64')
-ap.add_argument('--out', default=str(HERE.parent / 'dist' / 'tq-android-perf-2.3.zip'))
+ap.add_argument('--out', default=str(HERE.parent / 'dist' / 'tq-android-perf-2.3.1.zip'))
 a = ap.parse_args()
 
 if a.injector:

@@ -29,7 +29,7 @@ These are controlled benchmark results from one phone, not a promise for every d
 
 *30-second video of the same fight (10 casters + Plague, FPS cap removed). Top: no engine patches, 21.2 FPS on average and 275 frames over 50 ms. Bottom: all seven patches, 31.9 FPS and 18 frames over 50 ms. Screen recording costs some performance, so both clips run a little slower than the benchmark table.*
 
-**[Download v2.3 from GitHub Releases](https://github.com/SlopPort/tq-android-perf/releases/latest)**
+**[Download v2.3.1 from GitHub Releases](https://github.com/SlopPort/tq-android-perf/releases/latest)**
 
 ## Quick start
 
@@ -41,7 +41,7 @@ These are controlled benchmark results from one phone, not a promise for every d
 
 **Installation:**
 
-1. Download `tq-android-perf-2.3.zip` from the Releases page.
+1. Download `tq-android-perf-2.3.1.zip` from the Releases page.
 2. In Magisk, open **Modules → Install from storage**.
 3. Select the downloaded zip and reboot.
 4. Start Titan Quest and wait a few seconds after the main menu appears.
@@ -334,7 +334,7 @@ How it works:
 
 | Path | What it is |
 |---|---|
-| `module/` | Magisk module source (v2.3; `patch.js` is the whole patch script, unminified) and `build.py` that produces the installable zip |
+| `module/` | Magisk module source (v2.3.1; `patch.js` is the whole patch script, unminified) and `build.py` that produces the installable zip |
 | `module/src/` | Sources of the in-game menu: `overlay.c` (drawing and touch, a Frida CModule), `overlay-glue.js`, `make_font.py` |
 | `tools/benchmark/` | The benchmark harness: `tqbench.py`, the Frida agent, A/B scripts, scenarios and routes |
 | `tools/analysis/` | Fingerprints, the offline PLT scan, the ray-box emulator test, assembly stub generators |
