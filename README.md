@@ -96,6 +96,21 @@ Version 2.1 adds a menu drawn over the game:
 
 Two patches (direct calls and the ray-box test) change machine code at startup, so switching them takes effect on the next launch.
 
+## Known issues
+
+**Monsters and pets run along walls.** A player on the test phone (game 3.0.5339, all patches on) reported this. When an enemy is behind a thin wall or a closed door, for example in Act 3 (China), monsters and the player's pets and minions keep trying to start a fight through the wall. They cannot reach the target, so they keep running around next to the wall.
+
+This has not been investigated or fixed yet. It is not known whether one of the patches causes it or whether the unpatched game does the same.
+
+The most likely suspects are the two patches that touch where monsters stand or path to:
+
+- **Attack slot cache:** caches the positions around a target from which monsters attack, so `SlotManager::CalculateSlotPositions` runs less often.
+- **Path end-point cache:** remembers the floor height at a path end point for 0.5 s.
+
+The **Fast ray-box test** is less likely, because it was checked bit-identical against the original code on 300,000 cases.
+
+**How to help:** in the Perf menu, switch off **Attack slot cache** and **Path end-point cache** (both switch live, no restart) and check the same spot again. If that does not help, also switch off **Fast ray-box test** (applies on the next launch). Without the menu, create the files `noslot`, `nogetend` and `noabbox` in `/data/adb/modules/tq_autopatch/` and restart the game (see the switches above). Please report which switch changes the behaviour, or that the unpatched game does it too, in a GitHub issue.
+
 ## Add-ons
 
 Since 2.3 the in-game menu can host add-ons from other Magisk modules. The first one is [tq-traders](https://github.com/SlopPort/tq-traders): summonable traders (green, blue and purple items), a Restock button for every merchant, and skill and attribute resets, for single-player use.
