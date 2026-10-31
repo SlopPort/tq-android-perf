@@ -29,7 +29,7 @@ These are controlled benchmark results from one phone, not a promise for every d
 
 *30-second video of the same fight (10 casters + Plague, FPS cap removed). Top: no engine patches, 21.2 FPS on average and 275 frames over 50 ms. Bottom: all seven patches, 31.9 FPS and 18 frames over 50 ms. Screen recording costs some performance, so both clips run a little slower than the benchmark table.*
 
-**[Download v2.3.1 from GitHub Releases](https://github.com/SlopPort/tq-android-perf/releases/latest)**
+**[Download v2.4 from GitHub Releases](https://github.com/SlopPort/tq-android-perf/releases/latest)**
 
 ## Quick start
 
@@ -41,7 +41,7 @@ These are controlled benchmark results from one phone, not a promise for every d
 
 **Installation:**
 
-1. Download `tq-android-perf-2.3.1.zip` from the Releases page.
+1. Download `tq-android-perf-2.4.zip` from the Releases page.
 2. In Magisk, open **Modules → Install from storage**.
 3. Select the downloaded zip and reboot.
 4. Start Titan Quest and wait a few seconds after the main menu appears.
@@ -54,6 +54,8 @@ On the first launch of a game version, a background scan adds about 4 seconds. L
 **Uninstall:** remove the module in Magisk and reboot.
 
 **Add-ons:** [tq-traders](https://github.com/SlopPort/tq-traders) adds traders and a respec to the Perf menu. Install it as a second Magisk module; both still run in a single injection.
+
+**Mods:** with [Titan Quest Mods](https://github.com/SlopPort/tq-android-mods) (Magisk module `tq_mods`, 2.4+), that module injects Perf and its add-ons together with the mod loader, and this module's service stands back. The Perf switch in the Titan Quest Mods app pauses or resumes Perf.
 
 This is an experimental fan-made modification for single-player use. Use it at your own risk.
 
