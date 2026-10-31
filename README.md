@@ -49,13 +49,13 @@ These are controlled benchmark results from one phone, not a promise for every d
 
 On the first launch of a game version, a background scan adds about 4 seconds. Later launches use the cached result.
 
-**Switches without the menu:** create an empty file in `/data/adb/modules/tq_autopatch/` and restart the game. `noplt`, `nosnd`, `nostrm`, `noslot`, `nouneg`, `noabbox` and `nogetend` turn off one patch each; `nomenu` hides the menu. The module's **Action** button in Magisk pauses or resumes everything.
+**Switches without the menu:** create an empty file in `/data/adb/modules/tq_autopatch/` and restart the game. `noplt`, `nosnd`, `nostrm`, `noslot`, `nouneg`, `noabbox` and `nogetend` turn off one patch each; `nomenu` hides the menu. The module's **Action** button in Magisk pauses or resumes everything (with Titan Quest Mods installed, the app's Perf switch does the same).
 
 **Uninstall:** remove the module in Magisk and reboot.
 
 **Add-ons:** [tq-traders](https://github.com/SlopPort/tq-traders) adds traders and a respec to the Perf menu. Install it as a second Magisk module; both still run in a single injection.
 
-**Mods:** with [Titan Quest Mods](https://github.com/SlopPort/tq-android-mods) (Magisk module `tq_mods`, 2.4+), that module injects Perf and its add-ons together with the mod loader, and this module's service stands back. The Perf switch in the Titan Quest Mods app pauses or resumes Perf.
+**Mods:** with [Titan Quest Mods](https://github.com/SlopPort/tq-android-mods) (the mod loader, Magisk module `tq_mods`) installed, that module starts Perf 2.4+ and its add-ons together with the mod loader, and this module's own service stays idle. The Perf switch in the Titan Quest Mods app pauses or resumes Perf. Titan Quest Mods works only on game build 3.0.5364.
 
 This is an experimental fan-made modification for single-player use. Use it at your own risk.
 
@@ -63,7 +63,7 @@ This is an experimental fan-made modification for single-player use. Use it at y
 
 | | |
 |---|---|
-| **Tested** | Titan Quest for Android **3.0.5339** (versionCode 30005339), arm64, on a Redmi Note 8 with LineageOS and Magisk |
+| **Tested** | Titan Quest for Android **3.0.5339** (versionCode 30005339), also used on 3.0.5364 with Titan Quest Mods, arm64, on a Redmi Note 8 with LineageOS and Magisk |
 | **Expected to work, untested** | Other arm64 builds of the game. Functions are found by name at runtime and every patch checks a fingerprint of the code it changes. The call rewrite should apply on any build; a patch whose code changed switches itself off and says why in the status file. |
 | **Not supported** | The 32-bit (armeabi-v7a) build, the PC version, and phones without root |
 
@@ -351,7 +351,7 @@ How it works:
 
 | Path | What it is |
 |---|---|
-| `module/` | Magisk module source (v2.3.1; `patch.js` is the whole patch script, unminified) and `build.py` that produces the installable zip |
+| `module/` | Magisk module source (v2.4; `patch.js` is the whole patch script, unminified) and `build.py` that produces the installable zip |
 | `module/src/` | Sources of the in-game menu: `overlay.c` (drawing and touch, a Frida CModule), `overlay-glue.js`, `make_font.py` |
 | `tools/benchmark/` | The benchmark harness: `tqbench.py`, the Frida agent, A/B scripts, scenarios and routes |
 | `tools/analysis/` | Fingerprints, the offline PLT scan, the ray-box emulator test, assembly stub generators |
