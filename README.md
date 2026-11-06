@@ -29,9 +29,9 @@ These are controlled benchmark results from one phone, not a promise for every d
 
 *30-second video of the same fight (10 casters + Plague, FPS cap removed). Top: no engine patches, 21.2 FPS on average and 275 frames over 50 ms. Bottom: all seven patches, 31.9 FPS and 18 frames over 50 ms. Screen recording costs some performance, so both clips run a little slower than the benchmark table.*
 
-Version 2.5 adds four more engine patches: +7.4% average FPS over 2.4 in a 36-enemy fight on game build 3.0.5364 (see [Results for 2.5](#results-for-25)).
+Version 2.5 adds four more engine patches: +7.4% average FPS over 2.4 in a 36-enemy fight on game build 3.0.5364. Version 2.6 adds a twelfth, for shader parameters: another +2.9% over 2.5 in the same benchmark (see [Results for 2.5 and 2.6](#results-for-25-and-26)).
 
-**[Download v2.5 from GitHub Releases](https://github.com/SlopPort/tq-android-perf/releases/latest)**
+**[Download v2.6 from GitHub Releases](https://github.com/SlopPort/tq-android-perf/releases/latest)**
 
 ## Quick start
 
@@ -43,7 +43,7 @@ Version 2.5 adds four more engine patches: +7.4% average FPS over 2.4 in a 36-en
 
 **Installation:**
 
-1. Download `tq-android-perf-2.5.zip` from the Releases page.
+1. Download `tq-android-perf-2.6.zip` from the Releases page.
 2. In Magisk, open **Modules → Install from storage**.
 3. Select the downloaded zip and reboot.
 4. Start Titan Quest and wait a few seconds after the main menu appears.
@@ -77,7 +77,7 @@ adb shell su -c cat /data/user/0/com.hg.titanquestultimate/cache/tq-v2-status.js
 
 ## What does it optimize?
 
-The module contains eleven engine patches. The first seven:
+The module contains twelve engine patches. The first seven:
 
 - **Direct calls:** removes unnecessary PLT trampolines from calls between the engine's own functions.
 - **Sound sample cache:** stops decoding the same sound effect again on every play.
@@ -93,6 +93,10 @@ Version 2.5 adds four native patches for game build 3.0.5364. They compute exact
 - **Name lookups (`names`):** faster lookup of bones, attachment points and values by name.
 - **Small helpers (`misc`):** faster name and string comparisons and class-type checks.
 - **Resource bookkeeping (`res`):** the check that runs every time a mesh, texture or bone is used, without four nested function calls.
+
+Version 2.6 adds one more native patch for build 3.0.5364, with the same exact results:
+
+- **Shader parameters (`params`):** every mesh draw sets about 41 shader parameters by name. The name lookup is now done inline in the setter instead of through three nested calls.
 
 Each patch can be switched on or off separately, and each one checks the game's code before touching it, so an incompatible patch is skipped instead of applied blindly.
 
@@ -122,7 +126,7 @@ The **Fast ray-box test** is less likely, because it was checked bit-identical a
 
 **How to help:** in the Perf menu, switch off **Attack slot cache** and **Path end-point cache** (both switch live, no restart) and check the same spot again. If that does not help, also switch off **Fast ray-box test** (applies on the next launch). Without the menu, create the files `noslot`, `nogetend` and `noabbox` in `/data/adb/modules/tq_autopatch/` and restart the game (see the switches above). Please report which switch changes the behaviour, or that the unpatched game does it too, in a GitHub issue.
 
-**The 2.5 native patches are not in the Perf menu yet.** `bone`, `names`, `misc` and `res` are on by default. To turn one off, add its key with `false` to `/data/user/0/com.hg.titanquestultimate/cache/tq-perf-menu.json`, for example `{"bone":false}` (keys `bone`, `names`, `misc`, `res`), and restart the game. Their state is reported in `cache/tq-v14-status.json`. For verification there is also a check mode: setting `bonecheck`, `namescheck` or `misccheck` to `true` in the same file runs both the game's function and the replacement and counts differences. It is slower and meant for verification only.
+**The 2.5 and 2.6 native patches are not in the Perf menu yet.** `bone`, `names`, `misc`, `res` and `params` are on by default. To turn one off, add its key with `false` to `/data/user/0/com.hg.titanquestultimate/cache/tq-perf-menu.json`, for example `{"bone":false}` (keys `bone`, `names`, `misc`, `res`, `params`), and restart the game. Their state is reported in `cache/tq-v14-status.json`. For verification there is also a check mode: setting `bonecheck`, `namescheck`, `misccheck` or `paramscheck` to `true` in the same file runs both the game's function and the replacement and counts differences. It is slower and meant for verification only.
 
 ## Add-ons
 
@@ -159,9 +163,9 @@ For developers, modders and reverse engineers: how the benchmarks were run, what
 
 "p95" is the frame time that 95% of frames beat. For a steady 30 FPS it has to stay under 33.3 ms. The scene workload was the same in both variants (draw calls −2.5%, particle emitters +3% on the "after" side), so the difference comes from the patches, not from a lighter random scene.
 
-### Results for 2.5
+### Results for 2.5 and 2.6
 
-Setup: Redmi Note 8 (Snapdragon 665), game build 3.0.5364, an isolated copy of a save, 36 enemies of one type spawned at once, invulnerable player. Each run captured 20 seconds of presented frames from SurfaceFlinger. Configurations were interleaved, 4 rounds each. The game's normal 30 FPS cap stayed on, because this scene runs below 30 anyway.
+Setup: Redmi Note 8 (Snapdragon 665), game build 3.0.5364, an isolated copy of a save, 36 enemies of one type spawned at once, invulnerable player. Each run captured 20 seconds of presented frames from SurfaceFlinger. Configurations were interleaved, 4 rounds each for 2.5 and 8 rounds for the 2.6 patch. The game's normal 30 FPS cap stayed on, because this scene runs below 30 anyway.
 
 | Comparison | Off | On | Change |
 |---|---|---|---|
@@ -171,10 +175,14 @@ Setup: Redmi Note 8 (Snapdragon 665), game build 3.0.5364, an isolated copy of a
 | `res` alone | 23.19 FPS | 23.99 FPS | +3.5% |
 | **Perf 2.4 vs 2.5** (all four on): average FPS | 22.69 | 24.37 | **+7.4%** |
 | Same, frame intervals over 50 ms | 771 | 553 | −28% |
+| **`params` (2.6)**, on top of 2.5, 8 rounds: average FPS | 24.00 | 24.69 | **+2.9%** |
+| Same, frame intervals over 50 ms | 1171 | 1029 | −12% |
 
-In the final A/B, all 4 pairs were faster with 2.5. The individual gains don't add up linearly, and run-to-run noise is about ±1.5 FPS.
+In the final 2.4/2.5 A/B, all 4 pairs were faster with 2.5. The individual gains don't add up linearly, and run-to-run noise is about ±1.5 FPS. For `params`, 7 of 8 pairs were faster; the paired difference was +0.69 ± 0.39 FPS (standard error).
 
 In the profile the main thread had about 76% of the samples. The remaining main-thread hotspots are each under about 0.6% of samples, so further small exact patches would be below what this benchmark can measure. Looked at and rejected: `Slerp` (dominated by its `acos`/`sin` calls), shader constant upload (already tracks dirty state), the object lookup mutex (needed), and the skeletal pose copy (must stay byte-identical).
+
+For 2.6 the render CPU was looked at more closely. The lighting pass is about 17% of main-thread time, but it is one pass with all lights (the shader takes several lights), not one pass per light. Render passes issue GL calls directly, so they run on the main thread; worker threads can't take them over without a command-recording layer. A temporary diagnostic probe counted, per frame: 588 draw calls, 374 mesh passes (298 distinct objects, 38 shader programs), 568 uniform uploads and 15,432 shader-parameter lookups by name (about 41 per mesh pass). So the cost is the per-draw material and parameter work, not the number of lights or draws, which led to `params`. Tried and not shipped, because 8-round A/Bs showed no measurable gain: skipping clear bits in the uniform-upload slot loops (+0.09 ± 0.51 FPS; the cost there is the per-uniform work, not the bit scan), and a bundle of small helpers (matrix and coordinate multiplies without zero-construction, an inline style lookup, a folded level-loaded check: −0.23 ± 0.22 FPS). What remains in render CPU is mostly GL driver calls and uniform value conversion. Further exact rewrites there would be worth 1% or less each; bigger gains would need fewer draws (for example instancing), which means changing shaders, and that wasn't done.
 
 ### Test setup: graphics were already reduced
 
@@ -193,7 +201,7 @@ The phone's owner had disabled thermal throttling and set the CPU and GPU govern
 
 ### What's in the patch set
 
-The setup below applies to patches 1–7. Patches 8–11 (2.5) are described after them and were measured as in [Results for 2.5](#results-for-25).
+The setup below applies to patches 1–7. Patches 8–11 (2.5) and 12 (2.6) are described after them and were measured as in [Results for 2.5 and 2.6](#results-for-25-and-26).
 
 Each patch was A/B tested on its own, on top of the patches before it, with 3–4 runs per variant. The gains were measured separately, in different scenes and against different baselines, so **they don't add up** to the total above.
 
@@ -215,9 +223,9 @@ Patch 1 was measured on the walking route, the others in the heavy fight. The ta
 
 None of the patches 1–7 changes anything visible. Sound was checked by ear after patches 2 and 3.
 
-#### Native patches added in 2.5 (game build 3.0.5364)
+#### Native patches added in 2.5 and 2.6 (game build 3.0.5364)
 
-These four are written in C, compiled offline with the Android NDK's clang into small code blobs, and installed at runtime by `patch.js`. They are independent C reimplementations of the same arithmetic, written from observing the engine's behaviour; no game code is included. Each does the same calculation with the same order of floating-point operations, so results are bit-identical. Each has a check mode that runs both the game's function and the replacement and counts differences (see Known issues for how to switch it on); the call counts below are from those check runs. Sources and build steps are in `module/src/native/`.
+These five are written in C, compiled offline with the Android NDK's clang into small code blobs, and installed at runtime by `patch.js`. They are independent C reimplementations of the same arithmetic, written from observing the engine's behaviour; no game code is included. Each does the same calculation with the same order of floating-point operations, so results are bit-identical. Each has a check mode that runs both the game's function and the replacement and counts differences (see Known issues for how to switch it on); the call counts below are from those check runs. Sources and build steps are in `module/src/native/`.
 
 | # | Patch | What it replaces | Fix | Check mode |
 |---|---|---|---|---|
@@ -225,8 +233,9 @@ These four are written in C, compiled offline with the Android NDK's clang into 
 | 9 | **`names`** | `SmallNameMap::FindPair` for three value types (bone, attachment-point and int lookups by name). | Same probing; the key compare is two 64-bit loads instead of a called word loop. | 36.9M / 1.68M / 2.26M calls, 0 differences |
 | 10 | **`misc`** | The engine's 16-byte `Name` equality helper (124 call sites); the `std::string` equality helper (176 call sites, string-keyed hash maps); the RTTI `IsA` / `HasBase` class-type checks, which recurse into each other through PLT stubs. | Two 64-bit compares; 8 bytes per step; one loop. | 76.6M / 100.9M / 79.9M / 13.8M calls, 0 differences |
 | 11 | **`res`** | `Resource::EnsureAvailable`, ~35 call sites, runs for every mesh, texture or bone use. | Fused with the bookkeeping it calls (mark-as-used, frame counter, access counter): the same loads, stores and calls in the same order, without four nested calls. | — |
+| 12 | **`params`** (2.6) | `GraphicsShader2::SetValue` (all 8 template instantiations: int, float/Float2/Float3/Float4 into Float4, Float4x3, Float4x4, texture) and `GraphicsShader2::GetParameterIndex`. Every mesh draw sets about 41 shader parameters by name; the game's setter calls `GetParameterIndex`, which calls (through a PLT stub) the `unordered_map<Name, unsigned>` find, which calls a name-compare helper, for every parameter set. | The same libc++ bucket walk on the shader's live hash table (no cache), inlined into the setter, with the same checks, stores and return values. | 19.4M calls, 0 differences |
 
-Each one checks byte fingerprints of the game functions it replaces for build 3.0.5364 and switches itself off on other builds. Measured gains are in [Results for 2.5](#results-for-25).
+Each one checks byte fingerprints of the game functions it replaces for build 3.0.5364 and switches itself off on other builds. Measured gains are in [Results for 2.5 and 2.6](#results-for-25-and-26).
 
 #### Patch 1 in plain words, and why a 7% profile entry gave +16%
 
@@ -394,9 +403,9 @@ How it works:
 
 | Path | What it is |
 |---|---|
-| `module/` | Magisk module source (v2.5; `patch.js` is the whole patch script, unminified) and `build.py` that produces the installable zip |
+| `module/` | Magisk module source (v2.6; `patch.js` is the whole patch script, unminified) and `build.py` that produces the installable zip |
 | `module/src/` | Sources of the in-game menu: `overlay.c` (drawing and touch, a Frida CModule), `overlay-glue.js`, `make_font.py` |
-| `module/src/native/` | C sources of the 2.5 native patches (`bone.c`, `findpair.c`, `misc.c`, `res.c`) and `build_blob.py`, which compiles them into the code blobs embedded in `patch.js` |
+| `module/src/native/` | C sources of the 2.5 and 2.6 native patches (`bone.c`, `findpair.c`, `misc.c`, `res.c`, `params.c`) and `build_blob.py`, which compiles them into the code blobs embedded in `patch.js` |
 | `tools/benchmark/` | The benchmark harness: `tqbench.py`, the Frida agent, A/B scripts, scenarios and routes |
 | `tools/analysis/` | Fingerprints, the offline PLT scan, the ray-box emulator test, assembly stub generators |
 

@@ -167,3 +167,27 @@ Workload: isolated save copy, 36 spawned enemies of one type at once, invulnerab
 In the final A/B all 4 pairs favored 2.5, and intervals over 50 ms fell from 771 to 553 (−28%). Individual gains do not add linearly; run-to-run noise is about ±1.5 FPS. This is one phone and one workload.
 
 The main thread held about 76% of profile samples; the remaining main-thread hotspots are each under about 0.6%, below what this benchmark can resolve for small exact patches. Examined and rejected: `Slerp` (dominated by `acos`/`sin`), shader constant upload (already tracks dirty state), the object lookup mutex (needed) and the skeletal pose copy (must stay byte-identical). The 24 FPS floor in this workload is still not established.
+
+
+## Follow-up: render CPU / shader parameters (module 2.6)
+
+Same phone and build, same 36-enemy workload. The lighting pass (`RenderLights`) is about 17% of main-thread time. It is one pass with all lights (the shader takes several lights), not one pass per light. Render passes run as tasks that issue GL calls directly, so they run on the main thread; worker threads cannot help without a command-recording layer.
+
+A temporary diagnostic probe counted per frame: 588 draw calls, 374 mesh passes (298 distinct objects, 38 shader programs), 568 uniform uploads and 15,432 shader-parameter lookups by name (about 41 per mesh pass). The render CPU cost is therefore the per-draw material/parameter pipeline, not the number of lights or draws.
+
+- `params`: `GraphicsShader2::SetValue` (all 8 template instantiations: int, float/Float2/Float3/Float4 into Float4, Float4x3, Float4x4, texture) and `GetParameterIndex`. The game's setter calls `GetParameterIndex`, which goes through a PLT stub to the `unordered_map<Name, unsigned>` find, which calls a name-compare helper, for every parameter set. The replacement does the same libc++ bucket walk on the shader's live hash table (no cache), inlined into the setter, with the same checks, stores and return values. Check mode (`paramscheck`): 19.4M calls, 0 differences.
+
+Workload as for 2.5, but 8 interleaved rounds per configuration:
+
+| Comparison | Off FPS | On FPS | Change |
+|---|---:|---:|---:|
+| `params` (on top of 2.5) | 24.00 | 24.69 | +2.9% |
+
+Paired difference +0.69 ± 0.39 FPS (standard error), 7 of 8 pairs faster; intervals over 50 ms fell from 1,171 to 1,029 (−12%). One phone, one workload.
+
+Tried and not shipped (both exact, but no measurable gain in 8-round A/Bs):
+
+- Skipping clear bits in the uniform-upload slot loops: +0.09 ± 0.51 FPS. The cost there is the per-uniform work, not the bit scan.
+- A bundle of small helpers (matrix/coordinate multiply without zero-construction, inline style lookup, folded level-loaded check): −0.23 ± 0.22 FPS.
+
+What remains in render CPU is mostly GL driver calls and uniform value conversion; further exact rewrites would be worth about 1% or less each. Bigger gains would need fewer draws (for example instancing), which means changing shaders; that was not done. The 24 FPS floor in this workload is still not established.
