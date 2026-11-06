@@ -63,3 +63,33 @@ A separate UI comparison showed normal-sized pause buttons after disabling the e
 4. Correlate long frames with CPU scheduling, resource loads and GPU waits; regression-check real combat and pause/menu rendering.
 
 Only an English summary of original measurements is published here. No APKs, game libraries, maps, assets, saves, credentials or raw reverse-engineering dumps accompany this report.
+
+## Follow-up: restore sound-build gates and test the sample cache
+
+The installed source still used the 5339 sound-function lengths and correctly skipped the cache on 5364. The earlier reviewed 5364 sound ABI and cache implementation were rechecked: the cache code was unchanged, and eight full-length normalized fingerprints were independently recomputed from the local ELF. The source now selects those lengths/hashes only for the matching build ID. Other builds retain the previous table; modified fingerprints are still rejected. Shared sound/stream entries are covered, but the stream cache remained off in this experiment. This is a compatibility-table restoration, not a new cache algorithm.
+
+The first attempted series stopped before measuring B because sound was skipped. It is excluded below. A fresh complete series used PLT in both variants: A = PLT only; B = PLT plus sample cache. Other native patches and the overlay were off, at native resolution. Each window was 20 seconds.
+
+| Run | Variant | Observed FPS | Median ms | P95 ms | P99 ms | Worst ms | Intervals >41.67 ms / valid intervals |
+|---|---|---:|---:|---:|---:|---:|---:|
+| 1 | A | 28.59 | 33.35 | 50.02 | 50.16 | 83.24 | 55 / 560 |
+| 2 | B | 29.35 | 33.34 | 33.61 | 50.00 | 317.03 | 8 / 573 |
+| 3 | A | 28.08 | 33.35 | 50.04 | 50.18 | 100.04 | 76 / 550 |
+| 4 | B | 29.97 | 33.34 | 33.53 | 33.73 | 50.02 | 2 / 586 |
+
+Both pairs favored the cache, by approximately 0.8 and 1.9 observed FPS. The final B process reported 430 cache hits, 136 misses, no bypasses, evictions or full-cache events over its launch (not exclusively the timed window). Its PID matched that recorded B trial. This confirms reuse in that process; it does not establish audio correctness or long-session memory behavior. No audible regression check was completed.
+
+Boundary clocks and thermal snapshots were added. GPU clock was 820 MHz at the recorded boundaries; reported GPU temperatures ranged from 42.5 to 45.8 C. These snapshots do not establish continuous thermal control. Population snapshots were moved closer to the frame window: roughly 3.0-3.4 seconds before its first poll and 1.6-2.1 seconds after its last poll, including command/readout time. Live populations still changed, so scene equivalence remains unproven. The earlier B trial had a 317 ms interval; the last B trial had a 50 ms maximum. The 24 FPS floor remains unestablished.
+
+The source passed Node syntax validation and mocked build-gate tests for both tables, changed-fingerprint rejection and rejection of a changed function shared by sound and stream. The device source hash matched the local candidate. These checks do not replace runtime audio and memory regressions. Original module flag states were restored after the series; no prebuilt module release is included with this source update.
+
+## Follow-up: observer polling calibration
+
+Twelve consecutive two-second windows used order ABBA repeated three times. A read the SurfaceFlinger ring only at window boundaries. B additionally polled every 0.75 seconds. Both variants shared the endpoint readout costs; Perf remained paused. There were no detected ring-continuity gaps. Per-window intervals were pooled without joining timestamps across unobserved gaps.
+
+| Observer | Valid intervals | Pooled observed FPS | Intervals >41.67 ms |
+|---|---:|---:|---:|
+| Boundary reads only | 326 | 26.04 | 98 |
+| Extra 0.75-second polling | 322 | 25.89 | 100 |
+
+The difference was about 0.15 FPS, amid a scene that became faster over time. Short counterbalanced blocks reduce simple time-order bias but do not remove changing combat or population. This is not proof of zero overhead, a rigorous overhead bound, or a long-tail validation. It does not measure the shared endpoint costs or the separate CPU profiler overhead.

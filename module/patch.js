@@ -483,6 +483,9 @@ function getEndCacheV16(b){
  }catch(e){v14Report('getend',{state:'error',error:String(e)});console.log('TQ_GETEND_ERROR '+e);throw e;}
 }
 const FP_KNOWN = {"slot": [["_ZN4GAME11SlotManager22CalculateSlotPositionsEf", 204, ["c25dc5a2"]], ["_ZNK4GAME9Character15GetPathPositionEv", 8, ["c4076237"]], ["_ZNK4GAME24CharacterMovementManager15GetPathPositionEv", 104, ["4f4cfd6f"]]], "uneg": [["_ZN4GAME15OpenGLESProgram18GetUniformLocationEjl", 80, ["2b7e279a"]], ["_ZN4GAME15OpenGLESProgram21resetAttributeSamplerEv", 72, ["43e6f4f2"]]], "abbox": [["_ZNK4GAME5ABBox15GetIntersectionERKNS_3RayE", 996, ["7fea5668"]]], "getend": [["_ZNK4GAME10PathRecast7Segment6GetEndEv", 160, ["5adcfaad"]]], "snd": [["_ZN4GAME12SoundManager6Play3DERKNS_15SoundDescriptorEb", 668, ["9d51de57"]], ["_ZN4GAME12SoundManager6Play2DERKNS_15SoundDescriptorEb", 496, ["f9a47c6f"]], ["_ZN4GAME12SoundManager19ProcessFinishedListEv", 248, ["e4d2ab3e"]], ["_ZN4GAME12SoundManager13StealInstanceEv", 156, ["a9e3d69c"]]], "strm": [["_ZN4GAME12SoundManager13StartStream3DERKNS_15SoundDescriptorE", 480, ["897ad4c0"]], ["_ZN4GAME12SoundManager11StartStreamERKNS_15SoundDescriptorE", 444, ["b426902c"]], ["_ZN4GAME12SoundManager19ProcessFinishedListEv", 248, ["e4d2ab3e"]], ["_ZN4GAME12SoundManager13StealInstanceEv", 156, ["a9e3d69c"]]]};
+// Build 3.0.5364: reviewed sound ABI; full function lengths differ from 5339.
+const FP_5364_SOUND = {"snd":[["_ZN4GAME12SoundManager6Play3DERKNS_15SoundDescriptorEb",748,["d07740b7"]],["_ZN4GAME12SoundManager6Play2DERKNS_15SoundDescriptorEb",568,["d2be21ee"]],["_ZN4GAME12SoundManager19ProcessFinishedListEv",244,["3dccd144"]],["_ZN4GAME12SoundManager13StealInstanceEv",156,["a9e3d69c"]]],"strm":[["_ZN4GAME12SoundManager13StartStream3DERKNS_15SoundDescriptorE",480,["897ad4c0"]],["_ZN4GAME12SoundManager11StartStreamERKNS_15SoundDescriptorE",436,["8caf237c"]],["_ZN4GAME12SoundManager19ProcessFinishedListEv",244,["3dccd144"]],["_ZN4GAME12SoundManager13StealInstanceEv",156,["a9e3d69c"]]]};
+
 // ===== tq_autopatch v2: version-aware layer =====
 // Nothing below uses fixed addresses. Functions are resolved by exported symbol name, GOT slots by import
 // name (JUMP_SLOT/GLOB_DAT relocations of the mapped dynamic section), the PLT-bypass site list is computed on the device from the mapped ELF
@@ -517,9 +520,11 @@ function fpHash(addr, len) {
 }
 function v2Fingerprints() {
   const res = {};
-  for (const patch of Object.keys(FP_KNOWN)) {
+  const known = V2.status.buildId === "691c2ee61f7a149bf3851dd64788b3479078670f"
+    ? Object.assign({}, FP_KNOWN, FP_5364_SOUND) : FP_KNOWN;
+  for (const patch of Object.keys(known)) {
     const why = [];
-    for (const [sym, len, hashes] of FP_KNOWN[patch]) {
+    for (const [sym, len, hashes] of known[patch]) {
       const a = V2.mod.findExportByName(sym);
       if (a === null) { why.push('missing ' + sym); continue; }
       const h = V2.status.fingerprints[sym] || (V2.status.fingerprints[sym] = fpHash(a, len));
