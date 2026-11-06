@@ -123,3 +123,21 @@ In the first native validation, 36 new monster IDs were observed after 36 spawn 
 A following exploratory CPU profile of that workload recorded 4,743 samples, none lost, with 6.54% callchain errors. The directly observed game thread accounted for 83.98% of all process CPU-clock samples. Inclusive costs on that thread included engine update 34.87%, render 32.17%, monster update 18.70%, and character collision separation 6.54%. Costs overlap and share the all-process denominator. This motivates inspecting collision/update work without disabling AI or changing collision behavior. Presented FPS was 22.33, P99 66.86 ms and worst 83.51 ms; this is not an improvement comparison with the unprofiled run. At approximately one-second sampling cadence, all 20 CPU-availability snapshots reported online CPUs 0-7, game-thread allowed CPUs 0-7 and `/top-app` membership. Transient changes could be missed, and the earlier affinity changes remain unexplained.
 
 An earlier attempt at this profile was rejected before CPU recording: a setup request was incorrectly issued during the quiet window and timed out. The corrected run reused the thread ID already captured during setup, without issuing a new setup request inside the quiet window. Profiling overhead, changing surrounding populations, exact scene alignment and gameplay/UI regressions remain open gates. Neither the heavier-workload results nor the rejected affinity experiment establishes the 24 FPS floor.
+
+
+## Follow-up: negative uniform-lookup cache on the heavier workload
+
+This ABAB series held PLT and sound cache active and changed only the existing negative uniform-lookup cache flag. All other native patches and the shared menu were off, at native output resolution, with the same isolated seed, route and 36 spawn calls. Both shader-helper fingerprints matched the checked 5364 library. No cache algorithm was changed. A five-second wait after setup replaced the earlier two-second wait to let root-notification toasts expire before frame collection; the quiet period was extended accordingly. This makes the boundary population snapshot farther from the first frame poll. Comparisons with older series are not controlled comparisons.
+
+| Run | Cache | Observed FPS | P99 ms | Worst ms | Test group alive, before/after |
+|---|---|---:|---:|---:|---:|
+| 1 | A: off | 22.38 | 50.33 | 66.77 | 36 / 36 |
+| 2 | B: on | 22.84 | 66.51 | 116.70 | 36 / 36 |
+| 3 | A: off | 20.64 | 66.94 | 300.19 | 36 / 32 |
+| 4 | B: on | 22.70 | 66.67 | 116.70 | 36 / 36 |
+
+Both descriptive FPS differences favored B (+0.46 and +2.05), but long-frame behavior did not improve consistently. The test-group deaths in run 3, changing surrounding populations, unverified exact scene equivalence, thermal drift and observer costs prevent causal acceptance. Boundary availability snapshots reported online and game-thread allowed CPUs 0-7 with top-app membership; these are not continuous controls. The 24 FPS floor remains unmet in this workload. Original flags and native output resolution were restored, followed by a fresh process.
+
+The final B process reported 3,099,297 cache calls, 496 driver queries, 337,091 cached negative results and 124 row clears. The status PID matched that recorded run. These are launch-lifetime counters, not counts isolated to the 20-second frame window; they demonstrate cache use, not a speedup by themselves. Independent still-image world review found no evident missing terrain/materials or major readability regression between sampled A/B images. Crowd effects and foliage obscured actors in both, and stills do not establish animation, UI, intermittent rendering or gameplay correctness.
+
+A new host-native semantic test extracts the actual authored `UNIFORM_C` body from the module and compiles it with fixed-width types and fake GL callbacks. It passed positive/negative hits, invalid indices, disabled mode, program/index separation, the program-name bound, and invalidation on link, binary replacement and deletion followed by program-name reuse. This tests the C cache logic; it does not validate Frida redirection, Android ABI behavior or a real GL driver. Compiler outputs are temporary and are not distributed.
