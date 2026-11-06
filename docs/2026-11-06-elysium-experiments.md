@@ -141,3 +141,29 @@ Both descriptive FPS differences favored B (+0.46 and +2.05), but long-frame beh
 The final B process reported 3,099,297 cache calls, 496 driver queries, 337,091 cached negative results and 124 row clears. The status PID matched that recorded run. These are launch-lifetime counters, not counts isolated to the 20-second frame window; they demonstrate cache use, not a speedup by themselves. Independent still-image world review found no evident missing terrain/materials or major readability regression between sampled A/B images. Crowd effects and foliage obscured actors in both, and stills do not establish animation, UI, intermittent rendering or gameplay correctness.
 
 A new host-native semantic test extracts the actual authored `UNIFORM_C` body from the module and compiles it with fixed-width types and fake GL callbacks. It passed positive/negative hits, invalid indices, disabled mode, program/index separation, the program-name bound, and invalidation on link, binary replacement and deletion followed by program-name reuse. This tests the C cache logic; it does not validate Frida redirection, Android ABI behavior or a real GL driver. Compiler outputs are temporary and are not distributed.
+
+
+## Follow-up: exact native patches (module 2.5)
+
+Four main-thread hotspots on build 3.0.5364 were replaced with independent C reimplementations of the same arithmetic, written from observing the engine's behaviour and compiled offline with NDK clang (`-ffp-contract=off`) into small code blobs installed at runtime. Each keeps the same calculation and floating-point operation order, so results are bit-identical; each checks byte fingerprints of the replaced functions and switches itself off on other builds. No game code is distributed; sources are in `module/src/native/`.
+
+- `bone`: `SkeletalPose::GetBoneCoords` and `GraphicsMesh::GetAbsCoords` as straight-line code instead of calls to tiny matrix helpers. Check mode: 14.3M + 1.8M calls, 0 differences.
+- `names`: `SmallNameMap::FindPair` for three value types; same probing, key compare as two 64-bit loads. Check: 36.9M / 1.68M / 2.26M calls, 0 differences.
+- `misc`: 16-byte `Name` equality (124 call sites), `std::string` equality (176 call sites), RTTI `IsA` / `HasBase` as one loop. Check: 76.6M / 100.9M / 79.9M / 13.8M calls, 0 differences.
+- `res`: `Resource::EnsureAvailable` fused with its bookkeeping calls (same loads, stores and calls in the same order, ~35 call sites).
+
+Check mode runs both the game's function and the replacement and counts differences; it is slower and was used only for verification.
+
+Workload: isolated save copy, 36 spawned enemies of one type at once, invulnerable player, 20-second SurfaceFlinger presentation capture, configurations interleaved, 4 rounds each. The 30 FPS cap stayed on; the scene runs below it.
+
+| Comparison | Off FPS | On FPS | Change |
+|---|---:|---:|---:|
+| `bone` | 22.99 | 24.04 | +4.5% |
+| `names` | 22.49 | 23.99 | +6.7% |
+| `misc` | 23.19 | 23.90 | +3.1% |
+| `res` | 23.19 | 23.99 | +3.5% |
+| Perf 2.4 vs 2.5 (all four) | 22.69 | 24.37 | +7.4% |
+
+In the final A/B all 4 pairs favored 2.5, and intervals over 50 ms fell from 771 to 553 (−28%). Individual gains do not add linearly; run-to-run noise is about ±1.5 FPS. This is one phone and one workload.
+
+The main thread held about 76% of profile samples; the remaining main-thread hotspots are each under about 0.6%, below what this benchmark can resolve for small exact patches. Examined and rejected: `Slerp` (dominated by `acos`/`sin`), shader constant upload (already tracks dirty state), the object lookup mutex (needed) and the skeletal pose copy (must stay byte-identical). The 24 FPS floor in this workload is still not established.
