@@ -1252,7 +1252,7 @@ static void reset_gfx (void)
 /* ---------- layout (pixels of the EGL surface) ---------- */
 typedef struct { float x, y, w, h; } R;
 static float S (void) { return (float) st.H / 1080.0f; }
-static R btn_rect (void) { R r; float s = S (); r.x = st.W * 0.245f; r.y = 12 * s; r.w = 120 * s; r.h = 58 * s; return r; }
+static R btn_rect (void) { R r; float s = S (); r.x = 560 * s; r.y = 0; r.w = 110 * s; r.h = 38 * s; return r; }
 static R panel_rect (void) { R r; r.x = st.W * 0.05f; r.y = st.H * 0.06f; r.w = st.W * 0.90f; r.h = st.H * 0.88f; return r; }
 static R close_rect (void) { R p = panel_rect (), r; float s = S (); r.w = 150 * s; r.h = 54 * s; r.x = p.x + p.w - r.w - 20 * s; r.y = p.y + 14 * s; return r; }
 static R reset_rect (void) { R p = panel_rect (), r; float s = S (); r.w = 300 * s; r.h = 54 * s; r.x = p.x + p.w - r.w - 20 * s; r.y = p.y + p.h - r.h - 14 * s; return r; }

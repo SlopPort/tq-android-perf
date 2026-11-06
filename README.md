@@ -29,9 +29,9 @@ These are controlled benchmark results from one phone, not a promise for every d
 
 *30-second video of the same fight (10 casters + Plague, FPS cap removed). Top: no engine patches, 21.2 FPS on average and 275 frames over 50 ms. Bottom: all seven patches, 31.9 FPS and 18 frames over 50 ms. Screen recording costs some performance, so both clips run a little slower than the benchmark table.*
 
-Version 2.5 adds four more engine patches: +7.4% average FPS over 2.4 in a 36-enemy fight on game build 3.0.5364. Version 2.6 adds a twelfth, for shader parameters: another +2.9% over 2.5 in the same benchmark (see [Results for 2.5 and 2.6](#results-for-25-and-26)).
+Version 2.5 adds four more engine patches: +7.4% average FPS over 2.4 in a 36-enemy fight on game build 3.0.5364. Version 2.6 adds a twelfth, for shader parameters: another +2.9% over 2.5 in the same benchmark (see [Results for 2.5 and 2.6](#results-for-25-and-26)). Version 2.6.1 is a bugfix: the Perf button moved to the top edge of the screen so it no longer covers the weapon-set button; engine patches and performance are the same as 2.6.
 
-**[Download v2.6 from GitHub Releases](https://github.com/SlopPort/tq-android-perf/releases/latest)**
+**[Download v2.6.1 from GitHub Releases](https://github.com/SlopPort/tq-android-perf/releases/latest)**
 
 ## Quick start
 
@@ -43,11 +43,11 @@ Version 2.5 adds four more engine patches: +7.4% average FPS over 2.4 in a 36-en
 
 **Installation:**
 
-1. Download `tq-android-perf-2.6.zip` from the Releases page.
+1. Download `tq-android-perf-2.6.1.zip` from the Releases page.
 2. In Magisk, open **Modules → Install from storage**.
 3. Select the downloaded zip and reboot.
 4. Start Titan Quest and wait a few seconds after the main menu appears.
-5. Tap the **Perf** button next to the pause button to open the performance and graphics options.
+5. Tap the **Perf** button (a thin strip at the very top edge of the screen, just right of the pause button) to open the performance and graphics options.
 
 On the first launch of a game version, a background scan adds about 4 seconds. Later launches use the cached result.
 
@@ -373,7 +373,7 @@ The file is at `/data/user/0/com.hg.titanquestultimate/cache/tq-v2-status.json`.
 
 ## How the in-game menu works (module 2.1)
 
-A small **Perf** button sits at the top of the screen, to the right of the pause button. Tapping it opens a panel over the game:
+A small **Perf** button sits in a thin strip at the very top edge of the screen, just right of the pause button (since 2.6.1; before, it sat lower and covered the weapon-set button on the character screen). Tapping it opens a panel over the game:
 
 - **Engine patches (left).** Every patch from the table above can be switched on or off. Most switch live. The direct-call rewrite and the ray-box test change machine code at startup, so they apply on the next launch; the panel marks them "restart".
 - **Graphics (right).** These are switches the engine has but the mobile settings don't show. They apply live and are re-applied every frame, so the game's own settings screen doesn't undo them. Measured in the town of Rhodes:
